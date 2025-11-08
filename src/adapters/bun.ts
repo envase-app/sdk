@@ -1,0 +1,31 @@
+import { Adapter, Runtime } from '../types';
+
+export const BunAdapter: Adapter = {
+  async readFile(path: string): Promise<string> {
+    // This is a placeholder implementation
+    // In a real implementation, you would use Bun's file system API
+    throw new Error('BunAdapter.readFile not implemented');
+  },
+
+  async writeFile(path: string, content: string): Promise<void> {
+    // This is a placeholder implementation
+    // In a real implementation, you would use Bun's file system API
+    throw new Error('BunAdapter.writeFile not implemented');
+  },
+
+  async ensureDir(path: string): Promise<void> {
+    // This is a placeholder implementation
+    // In a real implementation, you would use Bun's file system API
+    throw new Error('BunAdapter.ensureDir not implemented');
+  },
+
+  getConfigPath(): string {
+    // This is a placeholder implementation
+    // In a real implementation, you would use Bun's path API
+    return '~/.envase/config.json';
+  },
+
+  getRuntime(): Runtime {
+    return 'bun';
+  }
+};

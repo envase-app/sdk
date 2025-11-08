@@ -1,0 +1,51 @@
+# Source files
+src/
+*.ts
+!*.d.ts
+
+# TypeScript config
+tsconfig.json
+tsup.config.ts
+tsup.config.js
+
+# Git
+.git/
+.gitignore
+
+# GitHub
+.github/
+
+# Node modules
+node_modules/
+
+# Test files
+coverage/
+*.test.ts
+*.spec.ts
+vitest.config.ts
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+
+
