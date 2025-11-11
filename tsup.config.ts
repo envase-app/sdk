@@ -10,10 +10,5 @@ export default defineConfig({
   minify: false, // Keep false for better debugging
   external: ['axios', 'zod'],
   treeshake: true,
-  esbuildOptions(options) {
-    options.banner = {
-      js: '"use client";',
-    };
-  },
   onSuccess: 'echo "✅ Build completed successfully"',
 });

@@ -35,18 +35,19 @@
   },
   "files": [
     "dist",
+    "docs",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
+    "lint": "biome lint --reporter summary .",
+    "lint:fix": "biome check --apply .",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -78,7 +79,7 @@
     "vitest": "^1.0.0",
     "@vitest/ui": "^1.0.0",
     "@vitest/coverage-v8": "^1.0.0",
-    "biome": "^0.3.3"
+    "@biomejs/biome": "^1.7.0"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0"
