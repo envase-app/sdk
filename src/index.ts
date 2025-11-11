@@ -40,6 +40,7 @@ export type {
   Secret,
   CreateSecret,
   UpdateSecret,
+  UpdateSecretParams,
   ListSecretsParams,
   GetSecretParams,
   SetSecretParams,

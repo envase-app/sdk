@@ -1,30 +1,56 @@
-import { ApiClient } from '../client/api-client';
-import { TeamMember, InviteMember, UpdateMemberRole, ListMembersParams } from '../types/teams';
-import { ApiResponse, PaginatedResponse } from '../types';
+import type { ApiClient } from '../client/api-client';
+import type {
+  InviteMember,
+  ListMembersParams,
+  TeamMember,
+  UpdateMemberRole,
+} from '../types/teams';
+import type { ApiResponse, PaginatedResponse } from '../types';
+import { EnvaseError } from '../types/errors';
 
 export class TeamsModule {
   constructor(private apiClient: ApiClient) {}
 
   async list(params: ListMembersParams): Promise<TeamMember[]> {
-    const response = await this.apiClient.get<PaginatedResponse<TeamMember>>(`/projects/${params.projectId}/members`, { params });
-    return response.data.data;
+    const response = await this.apiClient.get<PaginatedResponse<TeamMember>>(
+      `/api/projects/${params.projectId}/members`,
+      { params }
+    );
+    return response.data.data ?? [];
   }
 
   async get(projectId: string, userId: string): Promise<TeamMember> {
-    const response = await this.apiClient.get<ApiResponse<TeamMember>>(`/projects/${projectId}/members/${userId}`);
-    return response.data.data!;
+    const response = await this.apiClient.get<ApiResponse<TeamMember>>(
+      `/api/projects/${projectId}/members/${userId}`
+    );
+    const member = response.data.data;
+    if (!member) {
+      throw new EnvaseError('Team member not found', 'TEAM_MEMBER_NOT_FOUND');
+    }
+    return member;
   }
 
   async invite(projectId: string, data: InviteMember): Promise<void> {
-    await this.apiClient.post(`/projects/${projectId}/invitations`, data);
+    await this.apiClient.post(`/api/projects/${projectId}/invitations`, data);
   }
 
-  async updateRole(projectId: string, userId: string, data: UpdateMemberRole): Promise<TeamMember> {
-    const response = await this.apiClient.put<ApiResponse<TeamMember>>(`/projects/${projectId}/members/${userId}`, data);
-    return response.data.data!;
+  async updateRole(
+    projectId: string,
+    userId: string,
+    data: UpdateMemberRole
+  ): Promise<TeamMember> {
+    const response = await this.apiClient.put<ApiResponse<TeamMember>>(
+      `/api/projects/${projectId}/members/${userId}`,
+      data
+    );
+    const member = response.data.data;
+    if (!member) {
+      throw new EnvaseError('Failed to update member', 'TEAM_MEMBER_UPDATE_FAILED');
+    }
+    return member;
   }
 
   async remove(projectId: string, userId: string): Promise<void> {
-    await this.apiClient.delete(`/projects/${projectId}/members/${userId}`);
+    await this.apiClient.delete(`/api/projects/${projectId}/members/${userId}`);
   }
 }
