@@ -12,7 +12,7 @@ export class EnvaseError extends Error {
 
 // Authentication errors
 export class AuthenticationError extends EnvaseError {
-  constructor(message: string = 'Authentication failed', code?: string) {
+  constructor(message = 'Authentication failed', code?: string) {
     super(message, code, 401);
     this.name = 'AuthenticationError';
   }
@@ -20,7 +20,7 @@ export class AuthenticationError extends EnvaseError {
 
 // Authorization errors
 export class AuthorizationError extends EnvaseError {
-  constructor(message: string = 'Access denied', code?: string) {
+  constructor(message = 'Access denied', code?: string) {
     super(message, code, 403);
     this.name = 'AuthorizationError';
   }
@@ -34,10 +34,7 @@ export interface ValidationErrorDetail {
 }
 
 export class ValidationError extends EnvaseError {
-  constructor(
-    message: string = 'Validation failed',
-    public details: ValidationErrorDetail[] = []
-  ) {
+  constructor(message = 'Validation failed', public details: ValidationErrorDetail[] = []) {
     super(message, 'VALIDATION_ERROR', 422);
     this.name = 'ValidationError';
   }
@@ -45,7 +42,7 @@ export class ValidationError extends EnvaseError {
 
 // Network errors
 export class NetworkError extends EnvaseError {
-  constructor(message: string = 'Network error', statusCode: number = 0) {
+  constructor(message = 'Network error', statusCode = 0) {
     super(message, 'NETWORK_ERROR', statusCode);
     this.name = 'NetworkError';
   }
@@ -53,7 +50,7 @@ export class NetworkError extends EnvaseError {
 
 // Encryption errors
 export class EncryptionError extends EnvaseError {
-  constructor(message: string = 'Encryption failed', code?: string) {
+  constructor(message = 'Encryption failed', code?: string) {
     super(message, code);
     this.name = 'EncryptionError';
   }
@@ -61,7 +58,7 @@ export class EncryptionError extends EnvaseError {
 
 // Configuration errors
 export class ConfigurationError extends EnvaseError {
-  constructor(message: string = 'Configuration error', code?: string) {
+  constructor(message = 'Configuration error', code?: string) {
     super(message, code);
     this.name = 'ConfigurationError';
   }

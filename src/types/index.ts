@@ -27,10 +27,11 @@ export interface EnvaseClientOptions extends EnvaseConfig {
   // Additional client options
   autoRefresh?: boolean;
   onTokenRefresh?: (token: string) => void;
+  refreshToken?: string;
 }
 
 // API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -38,7 +39,7 @@ export interface ApiResponse<T = any> {
   requires?: ('mfa' | 'jit')[];
 }
 
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[];
   pagination: {
     page: number;
@@ -50,10 +51,10 @@ export interface PaginatedResponse<T = any> {
 
 // Logger interface
 export interface Logger {
-  debug(message: string, ...args: any[]): void;
-  info(message: string, ...args: any[]): void;
-  warn(message: string, ...args: any[]): void;
-  error(message: string, ...args: any[]): void;
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
 }
 
 // Runtime detection

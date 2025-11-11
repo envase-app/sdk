@@ -40,6 +40,10 @@ export const UpdateSecretSchema = z.object({
 
 export type UpdateSecret = z.infer<typeof UpdateSecretSchema>;
 
+export type UpdateSecretParams = UpdateSecret & {
+  encrypt?: boolean;
+};
+
 // List secrets params
 export interface ListSecretsParams {
   projectId: string;
@@ -66,6 +70,8 @@ export interface SetSecretParams {
   value: string;
   description?: string;
   folderId?: string;
+  scope?: 'project' | 'environment';
+  encrypt?: boolean;
 }
 
 // Secret version
