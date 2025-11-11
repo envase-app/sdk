@@ -1,31 +1,41 @@
-import { Adapter, Runtime } from '../types';
+import { promises as fs } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import type { Adapter, Runtime } from '../types';
+
+function expandPath(path: string): string {
+  if (path.startsWith('~')) {
+    return join(homedir(), path.slice(1));
+  }
+  return resolve(path);
+}
 
 export const NodeAdapter: Adapter = {
   async readFile(path: string): Promise<string> {
-    // This is a placeholder implementation
-    // In a real implementation, you would use Node.js fs module
-    throw new Error('NodeAdapter.readFile not implemented');
+    const resolved = expandPath(path);
+    return await fs.readFile(resolved, 'utf8');
   },
 
   async writeFile(path: string, content: string): Promise<void> {
-    // This is a placeholder implementation
-    // In a real implementation, you would use Node.js fs module
-    throw new Error('NodeAdapter.writeFile not implemented');
+    const resolved = expandPath(path);
+    await ensureDirectory(dirname(resolved));
+    await fs.writeFile(resolved, content, 'utf8');
   },
 
   async ensureDir(path: string): Promise<void> {
-    // This is a placeholder implementation
-    // In a real implementation, you would use Node.js fs module
-    throw new Error('NodeAdapter.ensureDir not implemented');
+    const resolved = expandPath(path);
+    await ensureDirectory(resolved);
   },
 
   getConfigPath(): string {
-    // This is a placeholder implementation
-    // In a real implementation, you would use Node.js path module
-    return '~/.envase/config.json';
+    return join(homedir(), '.envase', 'config.json');
   },
 
   getRuntime(): Runtime {
     return 'node';
-  }
+  },
 };
+
+async function ensureDirectory(path: string): Promise<void> {
+  await fs.mkdir(path, { recursive: true });
+}
