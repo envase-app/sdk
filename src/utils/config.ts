@@ -1,4 +1,4 @@
-import { EnvaseConfig } from '../types';
+import type { EnvaseConfig } from '../types';
 
 export class ConfigManager {
   private config: EnvaseConfig;
