@@ -1,96 +1,251 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { 
-  EnvaseError, 
-  AuthenticationError, 
+import axios, {
+  type AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
+import type { Logger } from '../types';
+import {
+  AuthenticationError,
   AuthorizationError,
+  EnvaseError,
+  NetworkError,
   ValidationError,
-  NetworkError 
 } from '../types/errors';
 
 export interface ApiClientConfig {
   apiUrl: string;
-  token: string;
+  token?: string;
+  organization?: string;
   timeout?: number;
   retries?: number;
   retryDelay?: number;
+  logger?: Logger;
+  onUnauthorized?: () => Promise<string | undefined>;
 }
 
 export class ApiClient {
-  private client: AxiosInstance;
-  private retries: number;
-  private retryDelay: number;
+  private readonly client: AxiosInstance;
+  private readonly retries: number;
+  private readonly retryDelay: number;
+  private token?: string;
+  private organization?: string;
+  private logger?: Logger;
+  private onUnauthorized?: () => Promise<string | undefined>;
 
   constructor(config: ApiClientConfig) {
-    this.retries = config.retries || 3;
-    this.retryDelay = config.retryDelay || 1000;
+    this.retries = config.retries ?? 3;
+    this.retryDelay = config.retryDelay ?? 1000;
+    this.token = config.token;
+    this.organization = config.organization;
+    this.logger = config.logger;
+    this.onUnauthorized = config.onUnauthorized;
 
     this.client = axios.create({
-      baseURL: config.apiUrl,
-      timeout: config.timeout || 30000,
-      headers: {
-        'Authorization': `Bearer ${config.token}`,
-        'Content-Type': 'application/json',
-      },
+      baseURL: this.normalizeBaseUrl(config.apiUrl),
+      timeout: config.timeout ?? 30000,
     });
 
     this.setupInterceptors();
   }
 
-  private setupInterceptors() {
-    // Request interceptor
-    this.client.interceptors.request.use(
-      (config) => config,
-      (error) => Promise.reject(error)
-    );
+  setToken(token: string | undefined): void {
+    this.token = token;
+  }
 
-    // Response interceptor
+  getToken(): string | undefined {
+    return this.token;
+  }
+
+  setOrganization(organization: string | undefined): void {
+    this.organization = organization;
+  }
+
+  setUnauthorizedHandler(handler?: () => Promise<string | undefined>): void {
+    this.onUnauthorized = handler;
+  }
+
+  setLogger(logger: Logger | undefined): void {
+    this.logger = logger;
+  }
+
+  async get<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.requestWithRetry(() => this.client.get<T>(url, config), {
+      method: 'GET',
+      url,
+    });
+  }
+
+  async post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.requestWithRetry(
+      () => this.client.post<T>(url, data, config),
+      { method: 'POST', url }
+    );
+  }
+
+  async put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.requestWithRetry(
+      () => this.client.put<T>(url, data, config),
+      { method: 'PUT', url }
+    );
+  }
+
+  async patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.requestWithRetry(
+      () => this.client.patch<T>(url, data, config),
+      { method: 'PATCH', url }
+    );
+  }
+
+  async delete<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.requestWithRetry(
+      () => this.client.delete<T>(url, config),
+      { method: 'DELETE', url }
+    );
+  }
+
+  getBaseURL(): string {
+    return this.client.defaults.baseURL ?? '';
+  }
+
+  private setupInterceptors(): void {
+    this.client.interceptors.request.use((config) => {
+      config.headers = config.headers ?? {};
+      if (this.token) {
+        config.headers.Authorization = `Bearer ${this.token}`;
+      }
+      if (this.organization) {
+        config.headers['X-Envase-Organization'] = this.organization;
+      }
+      config.headers['Content-Type'] ??= 'application/json';
+      return config;
+    });
+
     this.client.interceptors.response.use(
       (response) => response,
-      (error) => this.handleError(error)
+      (error) => Promise.reject(this.normalizeError(error))
     );
   }
 
-  private handleError(error: any): never {
-    if (error.response) {
-      const { status, data } = error.response;
-      
-      switch (status) {
-        case 401:
-          throw new AuthenticationError(data?.message || 'Unauthorized');
-        case 403:
-          throw new AuthorizationError(data?.message || 'Forbidden');
-        case 422:
-          throw new ValidationError(data?.message || 'Validation failed', data?.details || []);
-        default:
-          throw new NetworkError(data?.message || 'Network error', status);
+  private async requestWithRetry<T>(
+    request: () => Promise<AxiosResponse<T>>,
+    metadata: { method: string; url: string },
+    attempt = 0
+  ): Promise<AxiosResponse<T>> {
+    try {
+      this.logger?.debug?.(
+        `[Envase SDK] Request ${metadata.method} ${metadata.url} (attempt ${
+          attempt + 1
+        })`
+      );
+      const response = await request();
+      return response;
+    } catch (error) {
+      const normalized = error instanceof EnvaseError ? error : this.normalizeError(error);
+
+      if (
+        normalized instanceof AuthenticationError &&
+        this.onUnauthorized &&
+        attempt === 0
+      ) {
+        try {
+          const refreshedToken = await this.onUnauthorized();
+          if (refreshedToken) {
+            this.setToken(refreshedToken);
+          }
+          return this.requestWithRetry(request, metadata, attempt + 1);
+        } catch (authError) {
+          throw authError instanceof EnvaseError
+            ? authError
+            : this.normalizeError(authError);
+        }
       }
+
+      if (
+        normalized instanceof NetworkError &&
+        this.shouldRetry(normalized, attempt)
+      ) {
+        await this.delay(attempt);
+        return this.requestWithRetry(request, metadata, attempt + 1);
+      }
+
+      throw normalized;
     }
-    
-    throw new NetworkError(error.message || 'Network error', 0);
   }
 
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.client.get<T>(url, config);
+  private shouldRetry(error: NetworkError, attempt: number): boolean {
+    if (attempt >= this.retries) {
+      return false;
+    }
+
+    const status = error.statusCode ?? 0;
+    return status === 0 || status === 429 || status >= 500;
   }
 
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.client.post<T>(url, data, config);
+  private async delay(attempt: number): Promise<void> {
+    const delay = this.retryDelay * 2 ** attempt;
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.client.put<T>(url, data, config);
+  private normalizeError(error: unknown): EnvaseError {
+    if (error instanceof EnvaseError) {
+      return error;
+    }
+
+    if (axios.isAxiosError(error)) {
+      return this.mapAxiosError(error);
+    }
+
+    if (error instanceof Error) {
+      return new NetworkError(error.message, 0);
+    }
+
+    return new NetworkError('Unknown network error', 0);
   }
 
-  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.client.patch<T>(url, data, config);
+  private mapAxiosError(error: AxiosError): EnvaseError {
+    const status = error.response?.status ?? 0;
+    const data = error.response?.data as
+      | {
+          message?: string;
+          details?: { field: string; message: string; code: string }[];
+          code?: string;
+        }
+      | undefined;
+
+    const message = data?.message ?? error.message ?? 'Request failed';
+
+    switch (status) {
+      case 401:
+        return new AuthenticationError(message, data?.code);
+      case 403:
+        return new AuthorizationError(message, data?.code);
+      case 422:
+        return new ValidationError(message, data?.details ?? []);
+      default:
+        return new NetworkError(message, status);
+    }
   }
 
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.client.delete<T>(url, config);
-  }
-
-  // Helper method to get the base URL
-  getBaseURL(): string {
-    return this.client.defaults.baseURL || '';
+  private normalizeBaseUrl(url: string): string {
+    return url.endsWith('/') ? url.slice(0, -1) : url;
   }
 }
